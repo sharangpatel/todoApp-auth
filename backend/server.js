@@ -14,7 +14,8 @@ dotenv.config();  //to get local file into the process.env object
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:5173',   // Vite dev server URL
+  // In production, set FRONTEND_URL in Vercel env vars (e.g. https://your-frontend.vercel.app)
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,                 // Allow cookies to be sent
 }));
 
@@ -25,6 +26,9 @@ connectDB()       //connecting the database
 
 const JWT_SECRET = process.env.JWT_SECRET
 
+app.get('/', (req, res) => {
+  res.status(200).json({ ok: true, service: 'todo-backend' });
+});
 
 const authMiddleware = async(req,res,next) => {
   try {
@@ -143,13 +147,19 @@ app.post('/sign-out', (req, res) => {   //SIGN OUT
   // Clear the same cookie you set in /sign-in
   res.clearCookie('token', {
     httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'none',
   });
   res.json({ message: 'Logged out successfully' });
 });
 
-app.listen(3003,()=>{
-  console.log('App is listening on port 3003')
-})
+// Vercel serverless functions should export the app, not call listen().
+// Locally, `npm start` will still start the server.
+if (process.env.VERCEL !== '1') {
+  const port = process.env.PORT || 3003;
+  app.listen(port, () => {
+    console.log(`App is listening on port ${port}`);
+  });
+}
 
+export default app;
